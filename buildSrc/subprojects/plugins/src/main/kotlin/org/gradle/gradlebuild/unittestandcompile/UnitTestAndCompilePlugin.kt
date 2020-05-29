@@ -17,6 +17,7 @@ package org.gradle.gradlebuild.unittestandcompile
 
 import accessors.base
 import accessors.java
+import accessors.groovy
 import buildJvms
 import libraries
 import library
@@ -26,9 +27,6 @@ import org.gradle.api.Named
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.artifacts.ExternalDependency
-import org.gradle.api.artifacts.FileCollectionDependency
-import org.gradle.api.artifacts.ProjectDependency
-import org.gradle.api.attributes.Attribute
 import org.gradle.api.attributes.Category
 import org.gradle.api.attributes.DocsType
 import org.gradle.api.attributes.Usage
@@ -42,11 +40,11 @@ import org.gradle.api.tasks.compile.CompileOptions
 import org.gradle.api.tasks.compile.GroovyCompile
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.testing.Test
-import org.gradle.build.ClasspathManifest
 import org.gradle.gradlebuild.BuildEnvironment
 import org.gradle.gradlebuild.BuildEnvironment.agentNum
 import org.gradle.gradlebuild.java.AvailableJavaInstallationsPlugin
 import org.gradle.gradlebuild.java.JavaInstallation
+import org.gradle.gradlebuild.packaging.ClasspathManifest
 import org.gradle.gradlebuild.versioning.buildVersion
 import org.gradle.internal.os.OperatingSystem
 import org.gradle.kotlin.dsl.*
@@ -56,17 +54,9 @@ import testLibrary
 import java.util.concurrent.Callable
 import java.util.jar.Attributes
 import org.gradle.testing.PerformanceTest
-import gitInfo
 
 
-/**
- * By default, we run an extra build step ("GRADLE_RERUNNER") which runs all test classes failed in the previous build step ("GRADLE_RUNNER").
- * However, if previous test failures are too many (>10), this is probably not caused by flakiness.
- * In this case, we simply skip the GRADLE_RERUNNER step.
- */
-const val tooManyTestFailuresThreshold = 10
-
-
+@Suppress("unused")
 class UnitTestAndCompilePlugin : Plugin<Project> {
     override fun apply(project: Project): Unit = project.run {
         apply(plugin = "groovy")
@@ -77,7 +67,7 @@ class UnitTestAndCompilePlugin : Plugin<Project> {
 
         base.archivesBaseName = "gradle-${name.replace(Regex("\\p{Upper}")) { "-${it.value.toLowerCase()}" }}"
         addDependencies()
-        addGeneratedResources(extension)
+        configureClasspathManifestGeneration(extension)
         configureCompile()
         configureSourcesVariant()
         configureJarTasks()
@@ -117,11 +107,13 @@ class UnitTestAndCompilePlugin : Plugin<Project> {
             attributes {
                 attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage.JAVA_RUNTIME))
                 attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category.DOCUMENTATION))
-                attribute(DocsType.DOCS_TYPE_ATTRIBUTE, objects.named(DocsType.SOURCES))
-                attribute(Attribute.of("org.gradle.docselements", String::class.java), "sources")
+                attribute(DocsType.DOCS_TYPE_ATTRIBUTE, objects.named("gradle-source-folders"))
             }
             val sourceSet = the<SourceSetContainer>()[SourceSet.MAIN_SOURCE_SET_NAME]
             sourceSet.java.srcDirs.forEach {
+                outgoing.artifact(it)
+            }
+            sourceSet.groovy.srcDirs.forEach {
                 outgoing.artifact(it)
             }
         }
@@ -144,26 +136,12 @@ class UnitTestAndCompilePlugin : Plugin<Project> {
     }
 
     private
-    fun Project.addGeneratedResources(gradlebuildJava: UnitTestAndCompileExtension) {
+    fun Project.configureClasspathManifestGeneration(gradlebuildJava: UnitTestAndCompileExtension) {
         val runtimeClasspath by configurations
         val classpathManifest = tasks.register("classpathManifest", ClasspathManifest::class) {
-            archiveBaseName.set(base.archivesBaseName)
-            generatedResourcesDir.set(gradlebuildJava.generatedResourcesDir)
-            runtimeNonProjectDependencies.from(
-                runtimeClasspath.fileCollection {
-                    it is ExternalDependency || it is FileCollectionDependency
-                }
-            )
-        }
-        rootProject.subprojects.forEach { p ->
-            p.plugins.withType<UnitTestAndCompilePlugin> {
-                classpathManifest {
-                    archiveBaseNamesByProjectPath.put(p.path, p.base.archivesBaseName)
-                    if (runtimeClasspath.allDependencies.any { it is ProjectDependency && it.dependencyProject == p }) {
-                        runtimeProjectDependenciesPaths.add(p.path)
-                    }
-                }
-            }
+            this.runtimeClasspath.from(runtimeClasspath)
+            this.externalDependencies.from(runtimeClasspath.fileCollection { it is ExternalDependency })
+            this.manifestFile.set(gradlebuildJava.generatedResourcesDir.file("${base.archivesBaseName}-classpath.properties"))
         }
         java.sourceSets["main"].output.dir(mapOf("builtBy" to classpathManifest), gradlebuildJava.generatedResourcesDir)
     }
@@ -180,14 +158,16 @@ class UnitTestAndCompilePlugin : Plugin<Project> {
             val testImplementation = configurations.getByName("testImplementation")
             val testCompileOnly = configurations.getByName("testCompileOnly")
             val testRuntimeOnly = configurations.getByName("testRuntimeOnly")
+            testImplementation(platform(project(platformProject)))
             testCompileOnly(library("junit"))
             testRuntimeOnly(library("junit5_vintage"))
             testImplementation(library("groovy"))
             testImplementation(testLibrary("spock"))
             testRuntimeOnly(testLibrary("bytebuddy"))
             testRuntimeOnly(library("objenesis"))
+
             compileOnly(platform(project(platformProject)))
-            testImplementation(platform(project(platformProject)))
+
             implementation.withDependencies {
                 if (!isPublishedIndependently()) {
                     "implementation"(platform(project(platformProject)))
@@ -255,6 +235,9 @@ class UnitTestAndCompilePlugin : Plugin<Project> {
             runtimeClasspath {
                 // Ignore the build receipt as it is not relevant for tests and changes between each execution
                 ignore("org/gradle/build-receipt.properties")
+                // Also ignore the jar file that contains 'build-receipt.properties' inside a distribution zip.
+                // It is fine to ignore the whole JAR here, as the same JAR will be input to test tasks on the classpath as well.
+                ignore("lib/gradle-base-services-*.jar")
             }
         }
         tasks.withType<Test>().configureEach {
@@ -267,7 +250,6 @@ class UnitTestAndCompilePlugin : Plugin<Project> {
                 useJUnitPlatform()
             }
             configureJvmForTest()
-            configureGitInfo()
             addOsAsInputs()
 
             if (BuildEnvironment.isCiServer && this !is PerformanceTest) {
@@ -279,17 +261,6 @@ class UnitTestAndCompilePlugin : Plugin<Project> {
                     logger.lifecycle("maxParallelForks for '$path' is $maxParallelForks")
                 }
             }
-        }
-    }
-
-    /**
-     * Some tests depends on repository's git information.
-     */
-    private
-    fun Test.configureGitInfo() {
-        project.gitInfo.run {
-            systemProperty("gradleBuildBranch", gradleBuildBranch.get())
-            systemProperty("gradleBuildCommitId", gradleBuildCommitId.get())
         }
     }
 
@@ -331,8 +302,7 @@ class UnitTestAndCompilePlugin : Plugin<Project> {
 
 
 open class UnitTestAndCompileExtension(val project: Project) {
-    val generatedResourcesDir = project.file("${project.buildDir}/generated-resources/main")
-    val generatedTestResourcesDir = project.file("${project.buildDir}/generated-resources/test")
+    val generatedResourcesDir = project.objects.directoryProperty().convention(project.layout.buildDirectory.dir("generated-resources/main"))
 
     fun usedInWorkers() {
         project.java.targetCompatibility = JavaVersion.VERSION_1_6

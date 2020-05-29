@@ -43,7 +43,7 @@ class ToolingApiRemoteIntegrationTest extends AbstractIntegrationSpec {
     @Rule ConcurrentTestUtil concurrent = new ConcurrentTestUtil()
 
     def setup() {
-        assert distribution.binDistribution.exists() : "bin distribution must exist to run this test, you need to run the 'binZip' task"
+        assert distribution.binDistribution.exists() : "bin distribution must exist to run this test; make sure a <test>BinDistribution dependency is defined."
         server.start()
         toolingApi.requireIsolatedUserHome()
     }

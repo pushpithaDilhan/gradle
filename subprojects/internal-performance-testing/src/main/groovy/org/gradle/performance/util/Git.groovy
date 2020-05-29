@@ -26,9 +26,7 @@ class Git {
     }
 
     private Git() {
-        commitId = System.getProperty("gradleBuildCommitId")
-        branchName = System.getProperty("gradleBuildBranch")
-        assert commitId: "commitId must not be null!"
-        assert branchName: "branchName must not be null!"
+        commitId = System.getProperty("gradleBuildCommitId", "unknown-commit-id")
+        branchName = System.getProperty("gradleBuildBranch", "unknown-branch")
     }
 }

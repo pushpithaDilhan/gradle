@@ -14,14 +14,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import org.gradle.gradlebuild.test.integrationtests.GradleDistribution
 
 plugins {
-    id 'gradlebuild.distribution.core-api-java'
+    id 'gradlebuild.internal.java'
     // TODO: Apply asciidoctor in documentation plugin instead.
     id 'org.asciidoctor.convert'
     id 'gradlebuild.documentation'
     id 'org.gradle.samples' version "0.16.7"
-    id 'gradlebuild.internal.java'
 }
 
 repositories { handler ->
@@ -31,22 +31,27 @@ repositories { handler ->
 
 configurations {
     gradleFullDocsElements {
+        attributes {
+            attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage, Usage.JAVA_RUNTIME))
+            attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category, Category.DOCUMENTATION))
+            attribute(DocsType.DOCS_TYPE_ATTRIBUTE, objects.named(DocsType, "gradle-documentation"))
+        }
         visible = false
         canBeResolved = false
         canBeConsumed = true
-        attributes.attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage, "docs"))
-        attributes.attribute(Attribute.of("type", String), "full-docs")
     }
-    gradleGettingStartedElements {
-        visible = false
-        canBeResolved = false
-        canBeConsumed = true
-        attributes.attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage, "docs"))
-        attributes.attribute(Attribute.of("type", String), "getting-started")
+}
+
+tasks.create("checkCP") {
+    doLast {
+        configurations.sourcesPath.getIncoming().artifactView { lenient(true) }.getFiles().getAsFileTree().files.each { println(it.name) }
     }
 }
 
 dependencies {
+    // generate Javadoc for the full Gradle distribution
+    runtimeOnly project(":distributionsFull")
+
     asciidoctor "org.gradle:docs-asciidoctor-extensions:0.4.0"
     // TODO: Why isn't this using the output instead?
     asciidoctor project.files("src/main/resources")
@@ -78,6 +83,7 @@ dependencies {
     docsTestImplementation "${libraries.junit.coordinates}:${libraries.junit.version}"
 
     testImplementation project(":distributionsFull")
+    integTestDistributionRuntimeOnly project(":distributionsFull")
 }
 
 asciidoctorj {
@@ -551,10 +557,9 @@ tasks.named("docsTest") { task ->
     // Exemplar doesn't know about that it's running in the context of the gradle/gradle build
     // so it uses the Gradle distribution from the running build. This is not correct, because
     // we want to verify that the samples work with the Gradle distribution being built.
-
-    task.dependsOn(tasks.named('intTestImage'))
-    // TODO we use an absolute path here which makes the task not cacheable
-    task.systemProperty("integTest.gradleHomeDir", new File(project.buildDir, "integ test").absolutePath)
+    def installationEnvProvider = new GradleInstallationForTestEnvironmentProvider(project)
+    installationEnvProvider.gradleHomeDir.from(configurations.integTestDistributionRuntimeClasspath)
+    jvmArgumentProviders.add(installationEnvProvider)
 
     // // TODO (donat) investigate ignored snippets
     filter {
@@ -596,11 +601,27 @@ configurations {
             builtBy 'docs'
         }
     }
-    gradleGettingStartedElements {
-        outgoing.artifact(file("src/docs/README"))
-    }
 }
 
 tasks.named('platformTest') {
     dependsOn(tasks.named('checkSamples'))
+}
+
+class GradleInstallationForTestEnvironmentProvider implements CommandLineArgumentProvider {
+    private Project project
+
+    GradleInstallationForTestEnvironmentProvider(Project project) {
+        this.project = project
+    }
+
+    @Internal
+    final ConfigurableFileCollection gradleHomeDir = project.files()
+
+    @Nested
+    GradleDistribution gradleDistribution = new GradleDistribution(gradleHomeDir)
+
+    @Override
+    Iterable<String> asArguments() {
+        ["-DintegTest.gradleHomeDir=${gradleHomeDir.singleFile}"]
+    }
 }

@@ -345,7 +345,7 @@ abstract class AbstractToolingApiCrossVersionPerformanceTest extends Specificati
     private static class PerformanceTestToolingApiDistribution extends ExternalToolingApiDistribution {
 
         PerformanceTestToolingApiDistribution(ToolingApiDistribution delegate, File testDir) {
-            super(delegate.version.version, copyClasspath(delegate, testDir))
+            super(delegate.version.baseVersion.version, copyClasspath(delegate, testDir))
         }
 
         private static List<File> copyClasspath(ToolingApiDistribution delegate, File testDir) {
