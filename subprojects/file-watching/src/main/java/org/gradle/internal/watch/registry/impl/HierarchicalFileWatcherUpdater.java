@@ -149,6 +149,7 @@ public class HierarchicalFileWatcherUpdater implements FileWatcherUpdater {
         if (newWatchRoots.isEmpty() && watchRootsToRemove.isEmpty()) {
             return;
         }
+        LOGGER.warn("Current watch roots {}, new watch roots {}, watch roots to remove {}", watchedRoots, newWatchRoots, watchRootsToRemove);
         if (!watchRootsToRemove.isEmpty()) {
             watcher.stopWatching(watchRootsToRemove.stream()
                 .map(Path::toFile)
