@@ -18,6 +18,8 @@ package org.gradle.gradlebuild.unittestandcompile
 import accessors.base
 import accessors.java
 import buildJvms
+import com.gradle.enterprise.gradleplugin.testdistribution.TestDistributionPlugin
+import gitInfo
 import libraries
 import library
 import maxParallelForks
@@ -53,12 +55,12 @@ import org.gradle.kotlin.dsl.*
 import org.gradle.plugins.ide.idea.IdeaPlugin
 import org.gradle.plugins.ide.idea.model.IdeaModel
 import org.gradle.process.CommandLineArgumentProvider
+import org.gradle.testing.PerformanceTest
 import org.gradle.testretry.TestRetryPlugin
 import testLibrary
+import java.util.UUID
 import java.util.concurrent.Callable
 import java.util.jar.Attributes
-import org.gradle.testing.PerformanceTest
-import gitInfo
 
 
 /**
@@ -70,10 +72,15 @@ const val tooManyTestFailuresThreshold = 10
 
 
 class UnitTestAndCompilePlugin : Plugin<Project> {
+    private
+    val distributionPluginEnabled = System.getProperty("enable.distribution.plugin")?.toBoolean() ?: true
     override fun apply(project: Project): Unit = project.run {
         apply(plugin = "groovy")
         plugins.apply(AvailableJavaInstallationsPlugin::class.java)
         plugins.apply(TestRetryPlugin::class.java)
+        if (distributionPluginEnabled) {
+            plugins.apply(TestDistributionPlugin::class.java)
+        }
 
         val extension = extensions.create<UnitTestAndCompileExtension>("gradlebuildJava", this)
 
@@ -262,6 +269,11 @@ class UnitTestAndCompilePlugin : Plugin<Project> {
     }
 
     private
+    fun Test.addPoisonPill() {
+        inputs.property("poisonPill", UUID.randomUUID().toString())
+    }
+
+    private
     fun Project.configureTests() {
         normalization {
             runtimeClasspath {
@@ -281,12 +293,25 @@ class UnitTestAndCompilePlugin : Plugin<Project> {
             configureJvmForTest()
             configureGitInfo()
             addOsAsInputs()
+            addPoisonPill()
 
-            if (BuildEnvironment.isCiServer && this !is PerformanceTest) {
+            if (this !is PerformanceTest) {
                 retry {
                     maxRetries.set(1)
                     maxFailures.set(10)
                 }
+                if (distributionPluginEnabled) {
+                    distribution {
+                        maxLocalExecutors.set(System.getProperty("max.local.executors")?.toInt() ?: 0)
+                        enabled.set(true)
+                        when {
+                            OperatingSystem.current().isLinux() -> requirements.set(listOf("os=linux"))
+                            OperatingSystem.current().isWindows() -> requirements.set(listOf("os=windows"))
+                            OperatingSystem.current().isMacOsX() -> requirements.set(listOf("os=macos"))
+                        }
+                    }
+                }
+
                 doFirst {
                     logger.lifecycle("maxParallelForks for '$path' is $maxParallelForks")
                 }

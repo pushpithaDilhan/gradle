@@ -84,6 +84,10 @@ tasks {
     }
 }
 
+tasks.withType<IntegrationTest>().configureEach {
+    dependsOn(":kotlinDslPlugins:publishPluginsToTestRepository")
+}
+
 testFilesCleanup {
     policy.set(WhenNotEmpty.REPORT)
 }
