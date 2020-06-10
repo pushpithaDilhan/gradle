@@ -434,27 +434,29 @@ public class DefaultDependencyManagementServices implements DependencyManagement
             return new DefaultUrlArtifactRepository.Factory(fileResolver);
         }
 
-        BaseRepositoryFactory createBaseRepositoryFactory(LocalMavenRepositoryLocator localMavenRepositoryLocator,
-                                                          FileResolver fileResolver,
-                                                          FileCollectionFactory fileCollectionFactory,
-                                                          RepositoryTransportFactory repositoryTransportFactory,
-                                                          LocallyAvailableResourceFinder<ModuleComponentArtifactMetadata> locallyAvailableResourceFinder,
-                                                          FileStoreAndIndexProvider fileStoreAndIndexProvider,
-                                                          VersionSelectorScheme versionSelectorScheme,
-                                                          AuthenticationSchemeRegistry authenticationSchemeRegistry,
-                                                          IvyContextManager ivyContextManager,
-                                                          ImmutableAttributesFactory attributesFactory,
-                                                          ImmutableModuleIdentifierFactory moduleIdentifierFactory,
-                                                          InstantiatorFactory instantiatorFactory,
-                                                          FileResourceRepository fileResourceRepository,
-                                                          MavenMutableModuleMetadataFactory metadataFactory,
-                                                          IvyMutableModuleMetadataFactory ivyMetadataFactory,
-                                                          IsolatableFactory isolatableFactory,
-                                                          ObjectFactory objectFactory,
-                                                          CollectionCallbackActionDecorator callbackDecorator,
-                                                          NamedObjectInstantiator instantiator,
-                                                          DefaultUrlArtifactRepository.Factory urlArtifactRepositoryFactory,
-                                                          ChecksumService checksumService) {
+        BaseRepositoryFactory createBaseRepositoryFactory(
+            LocalMavenRepositoryLocator localMavenRepositoryLocator,
+            FileResolver fileResolver,
+            FileCollectionFactory fileCollectionFactory,
+            RepositoryTransportFactory repositoryTransportFactory,
+            LocallyAvailableResourceFinder<ModuleComponentArtifactMetadata> locallyAvailableResourceFinder,
+            FileStoreAndIndexProvider fileStoreAndIndexProvider,
+            VersionSelectorScheme versionSelectorScheme,
+            AuthenticationSchemeRegistry authenticationSchemeRegistry,
+            IvyContextManager ivyContextManager,
+            ImmutableAttributesFactory attributesFactory,
+            ImmutableModuleIdentifierFactory moduleIdentifierFactory,
+            InstantiatorFactory instantiatorFactory,
+            FileResourceRepository fileResourceRepository,
+            MavenMutableModuleMetadataFactory metadataFactory,
+            IvyMutableModuleMetadataFactory ivyMetadataFactory,
+            IsolatableFactory isolatableFactory,
+            ObjectFactory objectFactory,
+            CollectionCallbackActionDecorator callbackDecorator,
+            NamedObjectInstantiator instantiator,
+            DefaultUrlArtifactRepository.Factory urlArtifactRepositoryFactory,
+            ChecksumService checksumService
+        ) {
             return new DefaultBaseRepositoryFactory(
                 localMavenRepositoryLocator,
                 fileResolver,
@@ -618,34 +620,34 @@ public class DefaultDependencyManagementServices implements DependencyManagement
                                                        TransformationNodeRegistry transformationNodeRegistry,
                                                        DependencyVerificationOverride dependencyVerificationOverride) {
             return new ErrorHandlingConfigurationResolver(
-                    new ShortCircuitEmptyConfigurationResolver(
-                        new DefaultConfigurationResolver(
-                            artifactDependencyResolver,
-                            repositories,
-                            metadataHandler,
-                            resolutionResultsStoreFactory,
-                            startParameter.isBuildProjectDependencies(),
-                            attributesSchema,
-                            new DefaultArtifactTransforms(
-                                new ConsumerProvidedVariantFinder(
-                                    variantTransforms,
-                                    attributesSchema,
-                                    attributesFactory),
+                new ShortCircuitEmptyConfigurationResolver(
+                    new DefaultConfigurationResolver(
+                        artifactDependencyResolver,
+                        repositories,
+                        metadataHandler,
+                        resolutionResultsStoreFactory,
+                        startParameter.isBuildProjectDependencies(),
+                        attributesSchema,
+                        new DefaultArtifactTransforms(
+                            new ConsumerProvidedVariantFinder(
+                                variantTransforms,
                                 attributesSchema,
-                                attributesFactory,
-                                transformationNodeRegistry
-                            ),
-                            moduleIdentifierFactory,
-                            buildOperationExecutor,
-                            artifactTypeRegistry,
-                            componentSelectorConverter,
-                            attributeContainerSerializer,
-                            currentBuild.getBuildIdentifier(),
-                            new AttributeDesugaring(attributesFactory),
-                            dependencyVerificationOverride),
-                        componentIdentifierFactory,
+                                attributesFactory),
+                            attributesSchema,
+                            attributesFactory,
+                            transformationNodeRegistry
+                        ),
                         moduleIdentifierFactory,
-                        currentBuild.getBuildIdentifier()));
+                        buildOperationExecutor,
+                        artifactTypeRegistry,
+                        componentSelectorConverter,
+                        attributeContainerSerializer,
+                        currentBuild.getBuildIdentifier(),
+                        new AttributeDesugaring(attributesFactory),
+                        dependencyVerificationOverride),
+                    componentIdentifierFactory,
+                    moduleIdentifierFactory,
+                    currentBuild.getBuildIdentifier()));
         }
 
         ArtifactPublicationServices createArtifactPublicationServices(ServiceRegistry services) {
