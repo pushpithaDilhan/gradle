@@ -124,6 +124,7 @@ public class DefaultExecHandle implements ExecHandle, ProcessSettings {
                       Map<String, String> environment, StreamsHandler outputHandler, StreamsHandler inputHandler,
                       List<ExecHandleListener> listeners, boolean redirectErrorStream, int timeoutMillis, boolean daemon,
                       Executor executor, BuildCancellationToken buildCancellationToken) {
+        System.out.println(command + " " + arguments + " " + environment);
         this.displayName = displayName;
         this.directory = directory;
         this.command = command;
@@ -255,7 +256,7 @@ public class DefaultExecHandle implements ExecHandle, ProcessSettings {
     @Override
     public ExecHandle start() {
         LOGGER.info("Starting process '{}'. Working directory: {} Command: {} {}",
-                displayName, directory, command, ARGUMENT_JOINER.join(arguments));
+            displayName, directory, command, ARGUMENT_JOINER.join(arguments));
         if (LOGGER.isDebugEnabled()) {
             LOGGER.debug("Environment for process '{}': {}", displayName, environment);
         }
