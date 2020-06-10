@@ -21,14 +21,16 @@ import org.gradle.api.internal.tasks.AbstractTaskDependency;
 import org.gradle.api.internal.tasks.TaskDependencyInternal;
 import org.gradle.api.internal.tasks.TaskDependencyResolveContext;
 import org.gradle.api.tasks.TaskProvider;
+import org.gradle.internal.Cached;
 
 import java.io.File;
 
 public class SingleOutputTaskMavenArtifact extends AbstractMavenArtifact {
-    private final TaskProvider<? extends Task> generator;
+    private transient final TaskProvider<? extends Task> generator;
     private final String extension;
     private final String classifier;
-    private final TaskDependencyInternal buildDependencies;
+    private transient final TaskDependencyInternal buildDependencies;
+    private final Cached<File> file = Cached.of(this::computeFile);
 
     public SingleOutputTaskMavenArtifact(TaskProvider<? extends Task> generator, String extension, String classifier) {
         this.generator = generator;
@@ -39,6 +41,10 @@ public class SingleOutputTaskMavenArtifact extends AbstractMavenArtifact {
 
     @Override
     public File getFile() {
+        return file.get();
+    }
+
+    private File computeFile() {
         return generator.get().getOutputs().getFiles().getSingleFile();
     }
 
