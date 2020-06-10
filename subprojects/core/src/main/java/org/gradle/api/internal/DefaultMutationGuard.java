@@ -41,7 +41,11 @@ public class DefaultMutationGuard extends AbstractMutationGuard {
                 try {
                     action.execute(t);
                 } finally {
-                    mutationGuardState.set(oldIsMutationAllowed);
+                    if (oldIsMutationAllowed) {
+                        mutationGuardState.remove();
+                    } else {
+                        mutationGuardState.set(false);
+                    }
                 }
             }
         };
