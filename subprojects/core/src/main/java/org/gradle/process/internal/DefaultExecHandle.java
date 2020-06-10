@@ -124,7 +124,6 @@ public class DefaultExecHandle implements ExecHandle, ProcessSettings {
                       Map<String, String> environment, StreamsHandler outputHandler, StreamsHandler inputHandler,
                       List<ExecHandleListener> listeners, boolean redirectErrorStream, int timeoutMillis, boolean daemon,
                       Executor executor, BuildCancellationToken buildCancellationToken) {
-        System.out.println(command + " " + arguments + " " + environment);
         this.displayName = displayName;
         this.directory = directory;
         this.command = command;
