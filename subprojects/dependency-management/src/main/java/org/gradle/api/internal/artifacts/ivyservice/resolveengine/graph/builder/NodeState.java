@@ -33,6 +33,7 @@ import org.gradle.api.attributes.AttributeContainer;
 import org.gradle.api.capabilities.Capability;
 import org.gradle.api.internal.artifacts.DependencySubstitutionInternal;
 import org.gradle.api.internal.artifacts.ResolvedConfigurationIdentifier;
+import org.gradle.api.internal.artifacts.ivyservice.dependencysubstitution.ArtifactSelectionDetailsInternal;
 import org.gradle.api.internal.artifacts.ivyservice.dependencysubstitution.DependencySubstitutionApplicator;
 import org.gradle.api.internal.artifacts.ivyservice.resolveengine.excludes.ModuleExclusions;
 import org.gradle.api.internal.artifacts.ivyservice.resolveengine.excludes.specs.ExcludeSpec;
@@ -559,6 +560,10 @@ public class NodeState implements DependencyGraphNode {
 
         DependencySubstitutionInternal details = substitutionResult.getResult();
         if (details != null && details.isUpdated()) {
+            ArtifactSelectionDetailsInternal artifactSelectionDetails = details.getArtifactSelectionDetails();
+            if (artifactSelectionDetails.isUpdated()) {
+                return dependencyState.withTargetAndArtifacts(details.getTarget(), artifactSelectionDetails.getTargetSelectors(), details.getRuleDescriptors());
+            }
             return dependencyState.withTarget(details.getTarget(), details.getRuleDescriptors());
         }
         return dependencyState;
@@ -610,7 +615,7 @@ public class NodeState implements DependencyGraphNode {
 
     public void evict() {
         evicted = true;
-        restartIncomingEdges();
+        restartIncomingEdges(false);
     }
 
     boolean shouldIncludedInGraphResult() {
@@ -971,18 +976,18 @@ public class NodeState implements DependencyGraphNode {
             }
         } else {
             if (!incomingEdges.isEmpty()) {
-                restartIncomingEdges();
+                restartIncomingEdges(true);
             }
         }
     }
 
-    private void restartIncomingEdges() {
+    private void restartIncomingEdges(boolean checkUnattached) {
         if (incomingEdges.size() == 1) {
             EdgeState singleEdge = incomingEdges.get(0);
-            singleEdge.restart();
+            singleEdge.restart(checkUnattached);
         } else {
             for (EdgeState dependency : new ArrayList<>(incomingEdges)) {
-                dependency.restart();
+                dependency.restart(checkUnattached);
             }
         }
         clearIncomingEdges();

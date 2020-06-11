@@ -58,6 +58,7 @@ import testLibrary
 import java.util.concurrent.Callable
 import java.util.jar.Attributes
 import org.gradle.testing.PerformanceTest
+import gitInfo
 
 
 /**
@@ -189,8 +190,10 @@ class UnitTestAndCompilePlugin : Plugin<Project> {
             val implementation = configurations.getByName("implementation")
             val compileOnly = configurations.getByName("compileOnly")
             val testImplementation = configurations.getByName("testImplementation")
+            val testCompileOnly = configurations.getByName("testCompileOnly")
             val testRuntimeOnly = configurations.getByName("testRuntimeOnly")
-            testImplementation(library("junit"))
+            testCompileOnly(library("junit"))
+            testRuntimeOnly(library("junit5_vintage"))
             testImplementation(library("groovy"))
             testImplementation(testLibrary("spock"))
             testRuntimeOnly(testLibrary("bytebuddy"))
@@ -269,7 +272,14 @@ class UnitTestAndCompilePlugin : Plugin<Project> {
         tasks.withType<Test>().configureEach {
             maxParallelForks = project.maxParallelForks
 
+            if (!BuildEnvironment.isIntelliJIDEA) {
+                // JUnit 5 Vintage engine can't recognize Spock @Unroll test method correctly
+                // So if running an @Unroll method in IDEA with include pattern "SomeClass.methodName"
+                // The result will be incorrect. In this case we fallback to JUnit
+                useJUnitPlatform()
+            }
             configureJvmForTest()
+            configureGitInfo()
             addOsAsInputs()
 
             if (BuildEnvironment.isCiServer && this !is PerformanceTest) {
@@ -281,6 +291,17 @@ class UnitTestAndCompilePlugin : Plugin<Project> {
                     logger.lifecycle("maxParallelForks for '$path' is $maxParallelForks")
                 }
             }
+        }
+    }
+
+    /**
+     * Some tests depends on repository's git information.
+     */
+    private
+    fun Test.configureGitInfo() {
+        project.gitInfo.run {
+            systemProperty("gradleBuildBranch", gradleBuildBranch.get())
+            systemProperty("gradleBuildCommitId", gradleBuildCommitId.get())
         }
     }
 

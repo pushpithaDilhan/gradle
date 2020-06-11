@@ -33,6 +33,7 @@ import org.gradle.api.internal.classpath.ModuleRegistry;
 import org.gradle.api.internal.classpath.PluginModuleRegistry;
 import org.gradle.api.internal.component.ComponentTypeRegistry;
 import org.gradle.api.internal.component.DefaultComponentTypeRegistry;
+import org.gradle.api.internal.file.DefaultArchiveOperations;
 import org.gradle.api.internal.file.DefaultFileOperations;
 import org.gradle.api.internal.file.DefaultFileSystemOperations;
 import org.gradle.api.internal.file.FileCollectionFactory;
@@ -163,6 +164,7 @@ import org.gradle.internal.classpath.CachedClasspathTransformer;
 import org.gradle.internal.concurrent.ExecutorFactory;
 import org.gradle.internal.event.ListenerManager;
 import org.gradle.internal.file.Deleter;
+import org.gradle.internal.file.RelativeFilePathResolver;
 import org.gradle.internal.hash.ClassLoaderHierarchyHasher;
 import org.gradle.internal.instantiation.InstantiatorFactory;
 import org.gradle.internal.invocation.DefaultBuildInvocationDetails;
@@ -206,6 +208,7 @@ public class BuildScopeServices extends DefaultServiceRegistry {
             registration.add(DefaultExecOperations.class);
             registration.add(DefaultFileOperations.class);
             registration.add(DefaultFileSystemOperations.class);
+            registration.add(DefaultArchiveOperations.class);
             for (PluginServiceRegistry pluginServiceRegistry : parent.getAll(PluginServiceRegistry.class)) {
                 pluginServiceRegistry.registerBuildServices(registration);
             }
@@ -249,8 +252,12 @@ public class BuildScopeServices extends DefaultServiceRegistry {
         return new DefaultProjectRegistry<ProjectInternal>();
     }
 
-    protected IProjectFactory createProjectFactory(Instantiator instantiator, ProjectRegistry<ProjectInternal> projectRegistry, BuildState owner, ProjectStateRegistry projectStateRegistry) {
-        return new ProjectFactory(instantiator, new DefaultTextFileResourceLoader(), projectRegistry, owner, projectStateRegistry);
+    protected TextFileResourceLoader createTextFileResourceLoader(RelativeFilePathResolver resolver) {
+        return new DefaultTextFileResourceLoader(resolver);
+    }
+
+    protected IProjectFactory createProjectFactory(Instantiator instantiator, ProjectRegistry<ProjectInternal> projectRegistry, BuildState owner, ProjectStateRegistry projectStateRegistry, TextFileResourceLoader resourceLoader) {
+        return new ProjectFactory(instantiator, resourceLoader, projectRegistry, owner, projectStateRegistry);
     }
 
     protected ProjectDescriptorRegistry createProjectDescriptorRegistry() {
@@ -426,13 +433,14 @@ public class BuildScopeServices extends DefaultServiceRegistry {
             publicBuildPath);
     }
 
-    protected InitScriptHandler createInitScriptHandler(ScriptPluginFactory scriptPluginFactory, ScriptHandlerFactory scriptHandlerFactory, BuildOperationExecutor buildOperationExecutor) {
+    protected InitScriptHandler createInitScriptHandler(ScriptPluginFactory scriptPluginFactory, ScriptHandlerFactory scriptHandlerFactory, BuildOperationExecutor buildOperationExecutor, TextFileResourceLoader resourceLoader) {
         return new InitScriptHandler(
             new DefaultInitScriptProcessor(
                 scriptPluginFactory,
                 scriptHandlerFactory
             ),
-            buildOperationExecutor
+            buildOperationExecutor,
+            resourceLoader
         );
     }
 
