@@ -157,6 +157,9 @@ public class DefaultCachedClasspathTransformer implements CachedClasspathTransfo
         CompleteFileSystemLocationSnapshot snapshot = virtualFileSystem.read(original.getAbsolutePath(), s -> s);
         HashCode contentHash = snapshot.getHash();
         if (snapshot.getType() == FileType.Missing) {
+            if (original.exists()) {
+                throw new IllegalStateException(String.format("Unexpected VFS state for %s.", original));
+            }
             return new EmptyOperation();
         }
         if (shouldUseFromCache(original)) {

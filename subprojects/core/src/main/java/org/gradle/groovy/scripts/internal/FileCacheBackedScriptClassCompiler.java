@@ -116,11 +116,16 @@ public class FileCacheBackedScriptClassCompiler implements ScriptClassCompiler, 
         try {
             File genericClassesDir = classesDir(cache, operation);
             File metadataDir = metadataDir(cache);
-            if (!genericClassesDir.exists() || !metadataDir.exists()) {
-                throw new IllegalStateException(String.format("Cache directory %s for %s appears to be corrupted.", cache.getBaseDir(), source.getDisplayName()));
+            if (!genericClassesDir.exists()) {
+                throw new BrokenCacheException(String.format("Classes directory %s does not exist.", genericClassesDir));
             }
-            File remappedClassesDir = remapClasses(cache.getBaseDir(), genericClassesDir, remapped);
+            if (!metadataDir.exists()) {
+                throw new BrokenCacheException(String.format("Metadata directory %s does not exist.", genericClassesDir));
+            }
+            File remappedClassesDir = remapClasses(genericClassesDir, remapped);
             return scriptCompilationHandler.loadFromDir(source, sourceHashCode, targetScope, remappedClassesDir, metadataDir, operation, scriptBaseClass);
+        } catch (BrokenCacheException e) {
+            throw new IllegalStateException(String.format("Cache directory %s for %s appears to be corrupted.", cache.getBaseDir(), source.getDisplayName()));
         } finally {
             cache.close();
         }
@@ -130,7 +135,7 @@ public class FileCacheBackedScriptClassCompiler implements ScriptClassCompiler, 
         return new EmptyCompiledScript<>(operation);
     }
 
-    private File remapClasses(File cacheBaseDir, File genericClassesDir, RemappingScriptSource source) {
+    private File remapClasses(File genericClassesDir, RemappingScriptSource source) {
         ScriptSource origin = source.getSource();
         String className = origin.getClassName();
         ClassPath transformed = classpathTransformer.transform(DefaultClassPath.of(genericClassesDir), CachedClasspathTransformer.StandardTransform.BuildLogic, new CachedClasspathTransformer.Transform() {
@@ -157,7 +162,7 @@ public class FileCacheBackedScriptClassCompiler implements ScriptClassCompiler, 
         });
         List<File> transformedFiles = transformed.getAsFiles();
         if (transformedFiles.size() != 1) {
-            throw new IllegalStateException(String.format("Cache directory %s for %s appears to be corrupted.", cacheBaseDir, source.getDisplayName()));
+            throw new BrokenCacheException(String.format("Expected a transformed classpath containing a single element, received: %s", transformedFiles));
         }
         return transformedFiles.get(0);
     }
@@ -172,6 +177,12 @@ public class FileCacheBackedScriptClassCompiler implements ScriptClassCompiler, 
 
     private File metadataDir(PersistentCache cache) {
         return new File(cache.getBaseDir(), "metadata");
+    }
+
+    private static class BrokenCacheException extends IllegalStateException {
+        public BrokenCacheException(String s) {
+            super(s);
+        }
     }
 
     private class CompileToCrossBuildCacheAction implements Action<PersistentCache> {
