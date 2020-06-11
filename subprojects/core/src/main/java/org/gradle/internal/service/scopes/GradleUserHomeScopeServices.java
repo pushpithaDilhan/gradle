@@ -169,8 +169,7 @@ public class GradleUserHomeScopeServices extends WorkerSharedUserHomeScopeServic
 
     WorkerProcessFactory createWorkerProcessFactory(LoggingManagerInternal loggingManagerInternal, MessagingServer messagingServer, ClassPathRegistry classPathRegistry,
                                                     TemporaryFileProvider temporaryFileProvider, JavaExecHandleFactory execHandleFactory, JvmVersionDetector jvmVersionDetector,
-                                                    JavaModuleDetector javaModuleDetector, MemoryManager memoryManager, GradleUserHomeDirProvider gradleUserHomeDirProvider,
-                                                    OutputEventListener outputEventListener) {
+                                                    MemoryManager memoryManager, GradleUserHomeDirProvider gradleUserHomeDirProvider, OutputEventListener outputEventListener) {
         return new DefaultWorkerProcessFactory(
             loggingManagerInternal,
             messagingServer,
@@ -180,7 +179,6 @@ public class GradleUserHomeScopeServices extends WorkerSharedUserHomeScopeServic
             temporaryFileProvider,
             execHandleFactory,
             jvmVersionDetector,
-            javaModuleDetector,
             outputEventListener,
             memoryManager
         );

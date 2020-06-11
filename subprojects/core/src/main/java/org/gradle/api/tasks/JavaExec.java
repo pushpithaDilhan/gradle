@@ -29,7 +29,6 @@ import org.gradle.api.provider.Provider;
 import org.gradle.api.provider.ProviderFactory;
 import org.gradle.api.tasks.options.Option;
 import org.gradle.internal.jvm.DefaultModularitySpec;
-import org.gradle.internal.jvm.JavaModuleDetector;
 import org.gradle.internal.jvm.inspection.JvmVersionDetector;
 import org.gradle.process.CommandLineArgumentProvider;
 import org.gradle.process.ExecResult;
@@ -139,11 +138,6 @@ public class JavaExec extends ConventionTask implements JavaExecSpec {
 
     @Inject
     protected ProviderFactory getProviderFactory() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Inject
-    protected JavaModuleDetector getJavaModuleDetector() {
         throw new UnsupportedOperationException();
     }
 
