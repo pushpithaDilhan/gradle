@@ -38,7 +38,6 @@ import org.gradle.process.JavaExecSpec;
 import org.gradle.process.JavaForkOptions;
 import org.gradle.process.ProcessForkOptions;
 import org.gradle.process.internal.DefaultJavaExecSpec;
-import org.gradle.process.internal.DslExecActionFactory;
 import org.gradle.process.internal.ExecActionFactory;
 import org.gradle.process.internal.JavaExecAction;
 
@@ -144,11 +143,6 @@ public class JavaExec extends ConventionTask implements JavaExecSpec {
     }
 
     @Inject
-    protected DslExecActionFactory getDslExecActionFactory() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Inject
     protected JavaModuleDetector getJavaModuleDetector() {
         throw new UnsupportedOperationException();
     }
@@ -156,7 +150,7 @@ public class JavaExec extends ConventionTask implements JavaExecSpec {
     @TaskAction
     public void exec() {
         setJvmArgs(getJvmArgs()); // convention mapping for 'jvmArgs'
-        JavaExecAction javaExecAction = getDslExecActionFactory().newDecoratedJavaExecAction();
+        JavaExecAction javaExecAction = getExecActionFactory().newJavaExecAction();
         javaExecSpec.copyTo(javaExecAction);
         execResult.set(javaExecAction.execute());
     }

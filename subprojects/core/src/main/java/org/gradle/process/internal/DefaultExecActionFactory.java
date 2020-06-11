@@ -102,7 +102,6 @@ public class DefaultExecActionFactory implements ExecFactory {
         return new DecoratingExecActionFactory(fileResolver, fileCollectionFactory, instantiator, executor, buildCancellationToken, objectFactory, javaModuleDetector);
     }
 
-    @Override
     public ExecAction newDecoratedExecAction() {
         throw new UnsupportedOperationException();
     }
@@ -134,7 +133,6 @@ public class DefaultExecActionFactory implements ExecFactory {
         return new ImmutableJavaForkOptions(copy);
     }
 
-    @Override
     public JavaExecAction newDecoratedJavaExecAction() {
         throw new UnsupportedOperationException();
     }
