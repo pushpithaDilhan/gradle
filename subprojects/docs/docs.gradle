@@ -556,6 +556,7 @@ tasks.named("docsTest") { task ->
     task.dependsOn(tasks.named('intTestImage'))
     // TODO we use an absolute path here which makes the task not cacheable
     task.systemProperty("integTest.gradleHomeDir", new File(project.buildDir, "integ test").absolutePath)
+    task.systemProperty("integTest.gradleGeneratedApiJarCacheDir", )
 
     // // TODO (donat) investigate ignored snippets
     filter {
