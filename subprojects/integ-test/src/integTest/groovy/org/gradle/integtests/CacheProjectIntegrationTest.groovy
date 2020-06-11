@@ -19,9 +19,6 @@ package org.gradle.integtests
 import org.gradle.api.internal.artifacts.ivyservice.CacheLayout
 import org.gradle.integtests.fixtures.AbstractIntegrationTest
 import org.gradle.integtests.fixtures.ToBeFixedForInstantExecution
-import org.gradle.internal.hash.HashUtil
-import org.gradle.internal.resource.CachingTextResource
-import org.gradle.internal.resource.UriTextResource
 import org.gradle.test.fixtures.file.TestFile
 import org.gradle.test.fixtures.server.http.HttpServer
 import org.gradle.test.fixtures.server.http.MavenHttpRepository
@@ -35,7 +32,8 @@ import static org.junit.Assert.assertEquals
 class CacheProjectIntegrationTest extends AbstractIntegrationTest {
     static final String TEST_FILE = "build/test.txt"
 
-    @Rule public final HttpServer server = new HttpServer()
+    @Rule
+    public final HttpServer server = new HttpServer()
 
     TestFile projectDir
     TestFile userHomeDir
@@ -69,11 +67,11 @@ class CacheProjectIntegrationTest extends AbstractIntegrationTest {
 
     private void updateCaches() {
         String version = GradleVersion.current().version
-        def hash = HashUtil.compactStringFor(new CachingTextResource(new UriTextResource("build file", buildFile, null)).contentHash.toByteArray())
-        String dirName = userHomeDir.file("caches/$version/scripts/$hash").list().find { it.startsWith("proj") }
-        String baseDir = "caches/$version/scripts/$hash/$dirName"
-        propertiesFile = userHomeDir.file("$baseDir/cache.properties")
-        classFile = userHomeDir.file("$baseDir/proj/_BuildScript_.class")
+        def candidates = userHomeDir.file("caches/$version/scripts").listFiles().findAll { it.file("proj").isDirectory() }
+        // when there are multiple candidates, assume that a different entry to that used last time is the one required
+        def baseDir = candidates.size() == 1 ? candidates.first() : candidates.find { propertiesFile == null || it != propertiesFile.parentFile }
+        propertiesFile = baseDir.file("cache.properties")
+        classFile = baseDir.file("proj/_BuildScript_.class")
     }
 
     @Test
@@ -150,7 +148,7 @@ configurations { compile }
 dependencies { compile 'commons-io:commons-io:1.4@jar' }
 """
 
-        50.times {i ->
+        50.times { i ->
             content += """
 task 'hello$i' {
     File file = file('$TEST_FILE')
